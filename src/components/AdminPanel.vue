@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { supabase } from '../supabase'
 import Toast from './Toast.vue'
 
@@ -108,6 +108,9 @@ const goToPage = (page) => {
 
 // 更新文案状态
 const updateStatus = async (id, newStatus) => {
+  // 保存当前滚动位置
+  const scrollPosition = window.scrollY
+
   try {
     const { error } = await supabase
       .from('copywriting')
@@ -116,31 +119,93 @@ const updateStatus = async (id, newStatus) => {
 
     if (error) throw error
 
-    showToastMessage('状态已更新')
-    await fetchAllCopywriting()
+    // 先在本地更新数据，避免重新获取导致的跳转
+    const item = allCopywriting.value.find(i => i.id === id)
+    if (item) {
+      item.status = newStatus
+    }
+
+    // 使用 nextTick 确保 DOM 更新后再恢复滚动位置
+    await nextTick()
+
+    // 检查当前页是否还有数据
+    const newPageSize = paginatedList.value.length
+
+    // 如果当前页没有数据了（所有数据都被筛选掉），跳到上一页
+    if (newPageSize === 0 && currentPage.value > 1) {
+      currentPage.value = currentPage.value - 1
+      await nextTick()
+    }
+
+    // 恢复滚动位置
+    window.scrollTo(0, scrollPosition)
+
   } catch (error) {
     console.error('更新失败:', error)
-    showToastMessage('更新失败')
   }
 }
 
 // 删除文案
 const deleteCopywriting = async (id) => {
-  if (!confirm('确定要删除这条文案吗？')) return
+  // 找到要删除的记录
+  const item = allCopywriting.value.find(i => i.id === id)
+
+  // 根据状态给出不同的警告提示
+  const statusText = {
+    'pending': '待审核',
+    'active': '已激活（正在首页展示）',
+    'rejected': '已拒绝'
+  }[item?.status] || '未知状态'
+
+  // 如果是已激活的文案，给予更强的警告
+  let confirmMessage = `确定要删除这条【${statusText}】文案吗？`
+  if (item?.status === 'active') {
+    confirmMessage = `⚠️ 警告：这是一条【已激活】的文案，正在首页展示中！\n\n删除后用户将无法看到这条文案。\n\n确定要删除吗？`
+  }
+
+  if (!confirm(confirmMessage)) return
+
+  // 保存当前滚动位置
+  const scrollPosition = window.scrollY
 
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('copywriting')
       .delete()
       .eq('id', id)
+      .select() // 返回被删除的数据
 
     if (error) throw error
 
-    showToastMessage('已删除')
-    await fetchAllCopywriting()
+    // 检查是否真的删除了数据
+    if (!data || data.length === 0) {
+      console.error('删除失败：该文案可能不存在或权限不足')
+      return
+    }
+
+    // 从本地数据中移除
+    const index = allCopywriting.value.findIndex(i => i.id === id)
+    if (index > -1) {
+      allCopywriting.value.splice(index, 1)
+    }
+
+    // 使用 nextTick 确保 DOM 更新后再恢复滚动位置
+    await nextTick()
+
+    // 检查当前页是否还有数据
+    const newPageSize = paginatedList.value.length
+
+    // 如果当前页没有数据了，跳到上一页
+    if (newPageSize === 0 && currentPage.value > 1) {
+      currentPage.value = currentPage.value - 1
+      await nextTick()
+    }
+
+    // 恢复滚动位置
+    window.scrollTo(0, scrollPosition)
+
   } catch (error) {
     console.error('删除失败:', error)
-    showToastMessage('删除失败')
   }
 }
 
@@ -237,7 +302,8 @@ onMounted(async () => {
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">文案管理后台</h1>
         <button
-          @click="logout"
+          type="button"
+          @click.prevent="logout"
           class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 select-none"
         >
           登出
@@ -248,7 +314,8 @@ onMounted(async () => {
       <div class="bg-white rounded-lg shadow p-4 mb-6">
         <div class="flex gap-2 flex-wrap">
           <button
-            @click="changeStatus('all')"
+            type="button"
+            @click.prevent="changeStatus('all')"
             :class="[
               'px-4 py-2 rounded-lg font-semibold transition-colors select-none',
               currentStatus === 'all'
@@ -259,7 +326,8 @@ onMounted(async () => {
             全部 ({{ statusCounts.all }})
           </button>
           <button
-            @click="changeStatus('pending')"
+            type="button"
+            @click.prevent="changeStatus('pending')"
             :class="[
               'px-4 py-2 rounded-lg font-semibold transition-colors select-none',
               currentStatus === 'pending'
@@ -270,7 +338,8 @@ onMounted(async () => {
             待审核 ({{ statusCounts.pending }})
           </button>
           <button
-            @click="changeStatus('active')"
+            type="button"
+            @click.prevent="changeStatus('active')"
             :class="[
               'px-4 py-2 rounded-lg font-semibold transition-colors select-none',
               currentStatus === 'active'
@@ -281,7 +350,8 @@ onMounted(async () => {
             已通过 ({{ statusCounts.active }})
           </button>
           <button
-            @click="changeStatus('rejected')"
+            type="button"
+            @click.prevent="changeStatus('rejected')"
             :class="[
               'px-4 py-2 rounded-lg font-semibold transition-colors select-none',
               currentStatus === 'rejected'
@@ -340,13 +410,15 @@ onMounted(async () => {
                 <!-- 待审核状态的操作 -->
                 <template v-if="item.status === 'pending'">
                   <button
-                    @click="updateStatus(item.id, 'active')"
+                    type="button"
+                    @click.prevent="updateStatus(item.id, 'active')"
                     class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 text-sm whitespace-nowrap select-none"
                   >
                     ✓ 通过
                   </button>
                   <button
-                    @click="updateStatus(item.id, 'rejected')"
+                    type="button"
+                    @click.prevent="updateStatus(item.id, 'rejected')"
                     class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 text-sm whitespace-nowrap select-none"
                   >
                     ✗ 拒绝
@@ -356,7 +428,8 @@ onMounted(async () => {
                 <!-- 已通过状态的操作 -->
                 <template v-else-if="item.status === 'active'">
                   <button
-                    @click="updateStatus(item.id, 'rejected')"
+                    type="button"
+                    @click.prevent="updateStatus(item.id, 'rejected')"
                     class="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 text-sm whitespace-nowrap select-none"
                   >
                     拒绝
@@ -366,7 +439,8 @@ onMounted(async () => {
                 <!-- 已拒绝状态的操作 -->
                 <template v-else-if="item.status === 'rejected'">
                   <button
-                    @click="updateStatus(item.id, 'active')"
+                    type="button"
+                    @click.prevent="updateStatus(item.id, 'active')"
                     class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 text-sm whitespace-nowrap select-none"
                   >
                     恢复
@@ -375,7 +449,8 @@ onMounted(async () => {
 
                 <!-- 删除按钮（所有状态都有） -->
                 <button
-                  @click="deleteCopywriting(item.id)"
+                  type="button"
+                  @click.prevent="deleteCopywriting(item.id)"
                   class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 text-sm whitespace-nowrap select-none"
                 >
                   删除
@@ -396,14 +471,16 @@ onMounted(async () => {
             <!-- 右侧：分页按钮 -->
             <div class="flex gap-2">
               <button
-                @click="goToPage(1)"
+                type="button"
+                @click.prevent="goToPage(1)"
                 :disabled="currentPage === 1"
                 class="px-3 py-1 rounded bg-white border hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed select-none"
               >
                 首页
               </button>
               <button
-                @click="goToPage(currentPage - 1)"
+                type="button"
+                @click.prevent="goToPage(currentPage - 1)"
                 :disabled="currentPage === 1"
                 class="px-3 py-1 rounded bg-white border hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed select-none"
               >
@@ -413,10 +490,11 @@ onMounted(async () => {
               <!-- 页码 -->
               <div class="flex gap-1">
                 <button
+                  type="button"
                   v-for="page in totalPages"
                   :key="page"
                   v-show="Math.abs(page - currentPage) < 3 || page === 1 || page === totalPages"
-                  @click="goToPage(page)"
+                  @click.prevent="goToPage(page)"
                   :class="[
                     'px-3 py-1 rounded border select-none',
                     page === currentPage
@@ -429,14 +507,16 @@ onMounted(async () => {
               </div>
 
               <button
-                @click="goToPage(currentPage + 1)"
+                type="button"
+                @click.prevent="goToPage(currentPage + 1)"
                 :disabled="currentPage === totalPages"
                 class="px-3 py-1 rounded bg-white border hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed select-none"
               >
                 下一页
               </button>
               <button
-                @click="goToPage(totalPages)"
+                type="button"
+                @click.prevent="goToPage(totalPages)"
                 :disabled="currentPage === totalPages"
                 class="px-3 py-1 rounded bg-white border hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed select-none"
               >
