@@ -22,6 +22,10 @@ const pageSize = 10
 const showToast = ref(false)
 const toastMessage = ref('')
 
+// 导入功能
+const fileInput = ref(null)
+const importing = ref(false)
+
 // 计算属性：根据状态筛选数据
 const filteredList = computed(() => {
   if (currentStatus.value === 'all') {
@@ -218,6 +222,108 @@ const showToastMessage = (message) => {
   }, 2000)
 }
 
+// 触发文件选择
+const triggerFileUpload = () => {
+  fileInput.value.click()
+}
+
+// 处理文件上传
+const handleFileUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  // 检查文件类型
+  if (!file.name.endsWith('.json')) {
+    showToastMessage('请上传 JSON 文件')
+    return
+  }
+
+  importing.value = true
+  showToastMessage('正在导入数据...')
+
+  try {
+    // 读取文件内容
+    const text = await file.text()
+    let dataToImport = []
+
+    // 尝试解析 JSON
+    try {
+      const parsed = JSON.parse(text)
+      
+      // 如果是数组，直接使用
+      if (Array.isArray(parsed)) {
+        dataToImport = parsed
+      } else {
+        // 如果是对象或单条数据，包装成数组
+        dataToImport = [parsed]
+      }
+    } catch (parseError) {
+      // 如果不是标准 JSON，尝试按行解析（每行一条数据）
+      const lines = text.split('\n').filter(line => line.trim())
+      for (const line of lines) {
+        try {
+          const item = JSON.parse(line)
+          dataToImport.push(item)
+        } catch (lineError) {
+          // 如果不是 JSON，当作纯文本
+          if (line.trim()) {
+            dataToImport.push({ content: line.trim() })
+          }
+        }
+      }
+    }
+
+    if (dataToImport.length === 0) {
+      showToastMessage('文件中没有有效数据')
+      importing.value = false
+      return
+    }
+
+    // 转换为数据库格式
+    const records = dataToImport.map(item => {
+      // 如果已经有 content 字段，直接使用
+      if (typeof item === 'object' && item.content) {
+        return {
+          content: item.content,
+          status: 'pending' // 始终设置为待审核
+        }
+      }
+      // 如果是字符串，作为 content
+      return {
+        content: typeof item === 'string' ? item : JSON.stringify(item),
+        status: 'pending'
+      }
+    })
+
+    // 批量插入数据库
+    const { data, error } = await supabase
+      .from('copywriting')
+      .insert(records)
+      .select()
+
+    if (error) throw error
+
+    // 添加到本地数据（添加到开头）
+    allCopywriting.value.unshift(...(data || []))
+
+    showToastMessage(`成功导入 ${records.length} 条数据`)
+    
+    // 切换到待审核标签页
+    currentStatus.value = 'pending'
+    currentPage.value = 1
+
+  } catch (error) {
+    console.error('导入失败:', error)
+    showToastMessage('导入失败：' + error.message)
+  } finally {
+    importing.value = false
+    // 清空文件输入
+    if (fileInput.value) {
+      fileInput.value.value = ''
+    }
+  }
+}
+
 // 格式化文案内容，转换转义字符
 const formatContent = (content) => {
   return content
@@ -301,13 +407,36 @@ onMounted(async () => {
       <!-- 头部 -->
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">文案管理后台</h1>
-        <button
-          type="button"
-          @click.prevent="logout"
-          class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 select-none"
-        >
-          登出
-        </button>
+        <div class="flex gap-3">
+          <!-- 导入按钮 -->
+          <button
+            type="button"
+            @click.prevent="triggerFileUpload"
+            :disabled="importing"
+            class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed select-none flex items-center gap-2"
+          >
+            <span v-if="!importing">📁 导入数据</span>
+            <span v-else>⏳ 导入中...</span>
+          </button>
+          
+          <!-- 隐藏的文件输入 -->
+          <input
+            ref="fileInput"
+            type="file"
+            accept=".json"
+            @change="handleFileUpload"
+            class="hidden"
+          />
+          
+          <!-- 登出按钮 -->
+          <button
+            type="button"
+            @click.prevent="logout"
+            class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 select-none"
+          >
+            登出
+          </button>
+        </div>
       </div>
 
       <!-- 状态筛选标签 -->
