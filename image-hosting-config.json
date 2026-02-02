@@ -1,0 +1,16 @@
+{
+  "updatedAt": "2026-02-02T14:30:00.000Z",
+  "provider": "iPic (p.ipic.vip)",
+  "iconUrls": {
+    "favicon": "https://p.ipic.vip/s94g5s.ico",
+    "icon192": "https://p.ipic.vip/6v8rsk.png",
+    "icon512": "https://p.ipic.vip/bvuoh2.png",
+    "appleTouchIcon": "https://p.ipic.vip/r78bmo.png"
+  },
+  "note": "图床配置信息 - 原始图片保留在 public/ 目录作为备份",
+  "filesUpdated": [
+    "vite.config.js - PWA manifest icons",
+    "index.html - favicon and apple-touch-icon",
+    "src/App.vue - header logo"
+  ]
+}

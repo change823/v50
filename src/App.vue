@@ -24,7 +24,7 @@ const closeSubmitModal = () => {
     <header v-if="isHomePage" class="bg-kfc-red text-white py-4 px-6 shadow-lg">
       <div class="max-w-4xl mx-auto flex justify-between items-center">
         <div class="flex items-center gap-3">
-          <img src="/icon-192.png" alt="KFC" class="w-12 h-12 rounded-lg shadow-md" />
+          <img src="https://p.ipic.vip/6v8rsk.png" alt="KFC" class="w-12 h-12 rounded-lg shadow-md" />
           <div class="flex flex-col">
             <h1 class="text-xl font-bold leading-tight">疯狂星期四</h1>
             <p class="text-sm font-medium opacity-90">Crazy Thursday</p>
