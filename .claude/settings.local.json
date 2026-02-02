@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(npm install)",
+      "Bash(if [ -f .env ])",
+      "Bash(then echo \"✅ .env 文件存在\")"
     ]
   }
 }

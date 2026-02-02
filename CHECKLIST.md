@@ -87,10 +87,10 @@ npm run dev
 
 ### 方式 A: Git 集成（推荐）
 
-- [ ] 初始化 Git 仓库：`git init`
-- [ ] 添加文件：`git add .`
-- [ ] 提交：`git commit -m "Initial commit"`
-- [ ] 推送到 GitHub/GitLab
+- [x] 初始化 Git 仓库：`git init`
+- [x] 添加文件：`git add .`
+- [x] 提交：`git commit -m "Initial commit"`
+- [x] 推送到 GitHub/GitLab
 - [ ] 登录 Cloudflare Dashboard
 - [ ] 创建新的 Pages 项目并连接仓库
 - [ ] 配置构建设置：

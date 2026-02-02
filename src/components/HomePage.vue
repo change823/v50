@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../supabase'
 import Toast from './Toast.vue'
 
@@ -7,6 +7,16 @@ const copywriting = ref('')
 const loading = ref(false)
 const showToast = ref(false)
 const toastMessage = ref('')
+
+// 格式化文案，将转义字符转换为真正的换行符、制表符等
+const formattedCopywriting = computed(() => {
+  return copywriting.value
+    .replace(/\\n/g, '\n')    // 转换 \n 为换行
+    .replace(/\\r/g, '\r')    // 转换 \r 为回车
+    .replace(/\\t/g, '\t')    // 转换 \t 为制表符
+    .replace(/\\"/g, '"')     // 转换 \" 为引号
+    .replace(/\\'/g, "'")     // 转换 \' 为单引号
+})
 
 // 获取随机文案
 const fetchRandomCopywriting = async () => {
@@ -38,7 +48,8 @@ const fetchRandomCopywriting = async () => {
 // 复制到剪贴板
 const copyToClipboard = async () => {
   try {
-    await navigator.clipboard.writeText(copywriting.value)
+    // 复制格式化后的文案（包含真正的换行符）
+    await navigator.clipboard.writeText(formattedCopywriting.value)
     showToastMessage('已复制到剪贴板！')
   } catch (error) {
     console.error('复制失败:', error)
@@ -76,7 +87,7 @@ onMounted(() => {
           v-else
           class="text-gray-800 text-lg md:text-xl leading-relaxed whitespace-pre-wrap"
         >
-          {{ copywriting }}
+          {{ formattedCopywriting }}
         </div>
       </div>
 
@@ -85,14 +96,14 @@ onMounted(() => {
         <button
           @click="fetchRandomCopywriting"
           :disabled="loading"
-          class="flex-1 bg-kfc-red text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105"
+          class="flex-1 bg-kfc-red text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors select-none"
         >
           🔄 换一句
         </button>
         <button
           @click="copyToClipboard"
           :disabled="loading || !copywriting"
-          class="flex-1 bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105"
+          class="flex-1 bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 active:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors select-none"
         >
           📋 复制
         </button>

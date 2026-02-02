@@ -61,7 +61,7 @@ const showToastMessage = (message) => {
         <h2 class="text-2xl font-bold text-gray-800">投稿文案</h2>
         <button
           @click="emit('close')"
-          class="text-gray-400 hover:text-gray-600 text-2xl"
+          class="text-gray-400 hover:text-gray-600 active:text-gray-800 text-2xl select-none"
         >
           ×
         </button>
@@ -85,7 +85,7 @@ const showToastMessage = (message) => {
       <button
         @click="submitCopywriting"
         :disabled="submitting || !content.trim()"
-        class="w-full bg-kfc-red text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        class="w-full bg-kfc-red text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors select-none"
       >
         {{ submitting ? '提交中...' : '提交' }}
       </button>

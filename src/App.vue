@@ -22,7 +22,7 @@ const closeSubmitModal = () => {
         <h1 class="text-2xl font-bold">🍗 疯四文案</h1>
         <button
           @click="openSubmitModal"
-          class="bg-white text-kfc-red px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+          class="bg-white text-kfc-red px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 active:bg-gray-200 transition-colors select-none"
         >
           我要投稿
         </button>
@@ -36,7 +36,7 @@ const closeSubmitModal = () => {
 
     <!-- Footer -->
     <footer class="text-center py-4 text-gray-600 text-sm">
-      <p>每个星期四都值得疯狂 🎉</p>
+      <p>再不疯狂我们就老了</p>
     </footer>
 
     <!-- Submit Modal -->

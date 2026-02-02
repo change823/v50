@@ -6,4 +6,22 @@
   body {
     @apply bg-gradient-to-br from-red-50 to-orange-50 min-h-screen;
   }
+
+  /* 防止移动端双击缩放和触摸延迟 */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  button {
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* 防止整个应用被缩放 */
+  #app {
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
 }
